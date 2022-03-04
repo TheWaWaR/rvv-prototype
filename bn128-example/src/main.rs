@@ -49,6 +49,10 @@ pub fn program_entry(argc: u64, argv: *const *const u8) -> i8 {
         }
     }
 
-    internal_main();
-    return 0;
+    let mut s = 0;
+    for i in 0..10 {
+        internal_main();
+        s += i;
+    }
+    return s - s;
 }

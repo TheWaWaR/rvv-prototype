@@ -236,19 +236,23 @@ pub fn program_entry() -> i8 {
         debug(format!("feature != simulator"))
     }
 
-    uint_version_test::test();
-    uint_version_test::test_i512();
-    uint_version_test::test_egcd();
-    uint_version_test::test_n_loops();
-    uint_version_test::test_xy_loops();
-    uint_version_test::test_multiple();
-    uint_version_test::test_pow();
-    uint_version_test::test_pow2();
-    uint_version_test::test_pow3();
-    uint_version_test::test_ops();
+    let mut s = 0;
+    for i in 0..10 {
+        s += i;
+        uint_version_test::test();
+        uint_version_test::test_i512();
+        uint_version_test::test_egcd();
+        uint_version_test::test_n_loops();
+        uint_version_test::test_xy_loops();
+        uint_version_test::test_multiple();
+        uint_version_test::test_pow();
+        uint_version_test::test_pow2();
+        uint_version_test::test_pow3();
+        uint_version_test::test_ops();
 
-    rsa_test::test_rsa();
+        rsa_test::test_rsa();
+    }
 
     debug(format!("done"));
-    return 0;
+    return s - s;
 }
