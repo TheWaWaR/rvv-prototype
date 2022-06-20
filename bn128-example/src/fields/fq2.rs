@@ -163,13 +163,13 @@ impl Mul for Fq2 {
         //     Multiplication and Squaring on Pairing-Friendly Fields.pdf
         //     Section 3 (Karatsuba)
         if cfg!(feature = "use_rvv_asm") {
-            let (aa, bb) = batch_mul2(self.c0, self.c1, other.c0, other.c1);
-            let (aa2, bb2) =
-                batch_mul2(bb, self.c0 + self.c1, fq_non_residue(), other.c0 + other.c1);
-
+            let mut result: [Fq; 4] = [Fq::zero(); 4];
+            let lhs = [self.c0, self.c1, self.c0, self.c1];
+            let rhs = [other.c0, other.c1, other.c1, other.c0];
+            batch_mul(&lhs, &rhs, &mut result);
             Fq2 {
-                c0: aa2 + aa,
-                c1: bb2 - aa - bb,
+                c0: result[0] - result[1],
+                c1: result[2] + result[3],
             }
         } else {
             let aa = self.c0 * other.c0;
