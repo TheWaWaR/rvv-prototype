@@ -5,6 +5,7 @@ pub mod arith;
 pub mod ethereum;
 mod fields;
 mod groups;
+pub mod rvv_crypto;
 pub mod rvv_impl;
 
 use crate::fields::FieldElement;
