@@ -17,7 +17,7 @@ simulator = ["rvv/simulator"]
 
 # this configuration is very important to CKB-VM
 [profile.release]
-lto = "fat"
+# lto = "fat"
 debug = true
 
 
