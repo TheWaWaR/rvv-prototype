@@ -5,8 +5,8 @@ use super::{
 use core::mem::MaybeUninit;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-const MUL_A_INDEX: [u8; 4] = [0, 32, 32, 0];
-const MUL_B_INDEX: [u8; 4] = [32, 0, 32, 0];
+const MUL_A_INDEX: [u16; 4] = [0, 32, 32, 0];
+const MUL_B_INDEX: [u16; 4] = [32, 0, 32, 0];
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Gfp2(pub [Gfp; 2]);

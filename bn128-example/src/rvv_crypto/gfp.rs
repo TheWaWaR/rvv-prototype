@@ -273,42 +273,37 @@ pub fn do_square(src: *const Gfp, dst: *mut Gfp, len: usize) {
             "mv t3, {src}",
             "mv t4, {dst}",
             "1:",
-            "vsetvli t1, t2, e256, m4",
-            // Load np => v24, p2 => v28
-            "mv t5, {np}",
-            "vlse256.v v24, (t5), x0",
-            "mv t5, {p2}",
-            "vlse256.v v28, (t5), x0",
+            "vsetvli t1, t2, e256, m2",
             // Load operands
             "vle256.v v0, (t3)",
-            "vle256.v v4, (t3)",
+            "vle256.v v2, (t3)",
             // T = mul(a, b) => v8
-            "vwmulu.vv v8, v0, v4",
+            "vwmulu.vv v4, v0, v2",
             // Extract T[0..4] => v0
-            "vnsrl.wx v0, v8, x0",
+            "vnsrl.wx v0, v4, x0",
             // m = halfMul(T[0..4], np) => v4
-            "vmul.vv v4, v0, v24",
+            "vmul.vv v2, v0, v28",
             // t = mul(m, p2)=> v16
-            "vwmulu.vv v16, v4, v28",
+            "vwmulu.vv v8, v2, v30",
             // c = t + T = > v8, with carry in v0
             // Temporarily enlarging vlen to deal with bigger adds
-            "vsetvli t1, t1, e512, m4",
-            "vmadc.vv v0, v8, v16",
-            "vadd.vv v8, v8, v16",
-            "vsetvli t1, t1, e256, m4",
+            "vsetvli t1, t1, e512, m2",
+            "vmadc.vv v0, v4, v8",
+            "vadd.vv v4, v4, v8",
+            "vsetvli t1, t1, e256, m2",
             // Extract c[4..8] => v4
             "li t5, 256",
-            "vnsrl.wx v4, v8, t5",
+            "vnsrl.wx v2, v4, t5",
             // gfpCarry using v4 in c[4..8], with carry in v0
             // c[4..8] - p2 => v16, with carry in v8
-            "vmsbc.vv v8, v4, v28",
-            "vsub.vv v16, v4, v28",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v8, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v8, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v4, otherwise use value in v16
-            "vmerge.vvm v4, v16, v4, v0",
+            "vmerge.vvm v2, v8, v2, v0",
             // Store result
-            "vse256.v v4, (t4)",
+            "vse256.v v2, (t4)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -320,8 +315,6 @@ pub fn do_square(src: *const Gfp, dst: *mut Gfp, len: usize) {
             "add t4, t4, t1",
             "blt x0, t2, 1b",
             len = in (reg) len,
-            np = in (reg) NP.as_ptr(),
-            p2 = in (reg) P2.as_ptr(),
             src = in (reg) src,
             dst = in (reg) dst,
         );
@@ -344,28 +337,25 @@ pub fn do_double(src: *const Gfp, dst: *mut Gfp, len: usize) {
             "mv t3, {src}",
             "mv t4, {dst}",
             "1:",
-            "vsetvli t1, t2, e256, m8",
+            "vsetvli t1, t2, e256, m2",
             // Load operands
-            "vle256.v v8, (t3)",
-            "vle256.v v16, (t3)",
+            "vle256.v v2, (t3)",
+            "vle256.v v4, (t3)",
             // Add operands together
             // c = a + b => v8, with carry in v0
-            "vmadc.vv v0, v8, v16",
-            "vadd.vv v8, v8, v16",
+            "vmadc.vv v0, v2, v4",
+            "vadd.vv v2, v2, v4",
             // gfpCarry on c
-            // Load p2 into v24
-            "mv t5, {p2}",
-            "vlse256.v v24, (t5), x0",
             // c - p2 => v24, with carry in v16
-            "vmsbc.vv v16, v8, v24",
-            "vsub.vv v24, v8, v24",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v6, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v16, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v8 (c),
             // otherwise use value in v24 (c - p2)
-            "vmerge.vvm v8, v24, v8, v0",
+            "vmerge.vvm v2, v6, v2, v0",
             // Store result
-            "vse256.v v8, (t4)",
+            "vse256.v v2, (t4)",
             // Update t2/t3, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -377,7 +367,6 @@ pub fn do_double(src: *const Gfp, dst: *mut Gfp, len: usize) {
             "add t4, t4, t1",
             "blt x0, t2, 1b",
             len = in (reg) len,
-            p2 = in (reg) P2.as_ptr(),
             dst = in (reg) dst,
             src = in (reg) src,
         );
@@ -400,26 +389,23 @@ pub fn do_neg(src: *const Gfp, dst: *mut Gfp, len: usize) {
             "mv t3, {src}",
             "mv t4, {dst}",
             "1:",
-            "vsetvli t1, t2, e256, m8",
-            // Load p2 into v24
-            "mv t5, {p2}",
-            "vlse256.v v24, (t5), x0",
+            "vsetvli t1, t2, e256, m2",
             // Load operand d into v8
-            "vle256.v v8, (t3)",
+            "vle256.v v2, (t3)",
             // c = p2 - d => v16, carry is cleared in v0
-            "vsub.vv v16, v24, v8",
+            "vsub.vv v4, v30, v2",
             "vmxor.mm v0, v0, v0",
             // gfpCarry on c with carry
             // c - p2 => v24, with carry in v8
-            "vmsbc.vv v8, v16, v24",
-            "vsub.vv v24, v16, v24",
+            "vmsbc.vv v2, v4, v30",
+            "vsub.vv v6, v4, v30",
             // Combine carries
-            "vmandnot.mm v0, v8, v0",
+            "vmandnot.mm v0, v2, v0",
             // Select value, if carry is 1, use value in v16 (c),
             // otherwise use value in v24 (c - p2)
-            "vmerge.vvm v8, v24, v16, v0",
+            "vmerge.vvm v2, v6, v4, v0",
             // Store result
-            "vse256.v v8, (t4)",
+            "vse256.v v2, (t4)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -431,7 +417,6 @@ pub fn do_neg(src: *const Gfp, dst: *mut Gfp, len: usize) {
             "add t4, t4, t1",
             "blt x0, t2, 1b",
             len = in (reg) len,
-            p2 = in (reg) P2.as_ptr(),
             dst = in (reg) dst,
             src = in (reg) src,
         );
@@ -454,25 +439,22 @@ pub fn normalize(dst: &mut [Gfp]) {
             "mv t2, {len}",
             "mv t3, {dst}",
             "1:",
-            "vsetvli t1, t2, e256, m8",
+            "vsetvli t1, t2, e256, m2",
             // Load operand c
-            "vle256.v v8, (t3)",
+            "vle256.v v2, (t3)",
             // Clear mask
             "vmxor.mm v0, v0, v0",
             // gfpCarry
-            // Load p2 into v24
-            "mv t5, {p2}",
-            "vlse256.v v24, (t5), x0",
             // c - p2 => v24, with carry in v16
-            "vmsbc.vv v16, v8, v24",
-            "vsub.vv v24, v8, v24",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v6, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v16, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v8 (c),
             // otherwise use value in v24 (c - p2)
-            "vmerge.vvm v8, v24, v8, v0",
+            "vmerge.vvm v2, v6, v2, v0",
             // Store result
-            "vse256.v v8, (t3)",
+            "vse256.v v2, (t3)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -483,7 +465,6 @@ pub fn normalize(dst: &mut [Gfp]) {
             "add t3, t3, t1",
             "blt x0, t2, 1b",
             len = in (reg) dst.len(),
-            p2 = in (reg) P2.as_ptr(),
             dst = in (reg) dst.as_ptr(),
         );
     }
@@ -506,42 +487,37 @@ pub fn do_mul(a: *const Gfp, b: *const Gfp, c: *mut Gfp, len: usize) {
             "mv t4, {b}",
             "mv t6, {c}",
             "1:",
-            "vsetvli t1, t2, e256, m4",
-            // Load np => v24, p2 => v28
-            "mv t5, {np}",
-            "vlse256.v v24, (t5), x0",
-            "mv t5, {p2}",
-            "vlse256.v v28, (t5), x0",
+            "vsetvli t1, t2, e256, m2",
             // Load operands
             "vle256.v v0, (t3)",
-            "vle256.v v4, (t4)",
+            "vle256.v v2, (t4)",
             // T = mul(a, b) => v8
-            "vwmulu.vv v8, v0, v4",
+            "vwmulu.vv v4, v0, v2",
             // Extract T[0..4] => v0
-            "vnsrl.wx v0, v8, x0",
+            "vnsrl.wx v0, v4, x0",
             // m = halfMul(T[0..4], np) => v4
-            "vmul.vv v4, v0, v24",
+            "vmul.vv v2, v0, v28",
             // t = mul(m, p2)=> v16
-            "vwmulu.vv v16, v4, v28",
+            "vwmulu.vv v8, v2, v30",
             // c = t + T = > v8, with carry in v0
             // Temporarily enlarging vlen to deal with bigger adds
-            "vsetvli t1, t1, e512, m4",
-            "vmadc.vv v0, v8, v16",
-            "vadd.vv v8, v8, v16",
-            "vsetvli t1, t1, e256, m4",
+            "vsetvli t1, t1, e512, m2",
+            "vmadc.vv v0, v4, v8",
+            "vadd.vv v4, v4, v8",
+            "vsetvli t1, t1, e256, m2",
             // Extract c[4..8] => v4
             "li t5, 256",
-            "vnsrl.wx v4, v8, t5",
+            "vnsrl.wx v2, v4, t5",
             // gfpCarry using v4 in c[4..8], with carry in v0
             // c[4..8] - p2 => v16, with carry in v8
-            "vmsbc.vv v8, v4, v28",
-            "vsub.vv v16, v4, v28",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v8, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v8, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v4, otherwise use value in v16
-            "vmerge.vvm v4, v16, v4, v0",
+            "vmerge.vvm v2, v8, v2, v0",
             // Store result
-            "vse256.v v4, (t6)",
+            "vse256.v v2, (t6)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -554,15 +530,11 @@ pub fn do_mul(a: *const Gfp, b: *const Gfp, c: *mut Gfp, len: usize) {
             "add t6, t6, t1",
             "blt x0, t2, 1b",
             len = in (reg) len,
-            np = in (reg) NP.as_ptr(),
-            p2 = in (reg) P2.as_ptr(),
             a = in (reg) a,
             b = in (reg) b,
             c = in (reg) c,
-            // debug_val = in (reg) debug_val.as_ptr(),
         );
     }
-    // debug(format!("debug_val: {:?}", debug_val));
 }
 
 #[inline(never)]
@@ -582,42 +554,37 @@ pub fn do_mul_scalar(a: *const Gfp, b: &Gfp, c: *mut Gfp, len: usize) {
             "mv t4, {b}",
             "mv t6, {c}",
             "1:",
-            "vsetvli t1, t2, e256, m4",
-            // Load np => v24, p2 => v28
-            "mv t5, {np}",
-            "vlse256.v v24, (t5), x0",
-            "mv t5, {p2}",
-            "vlse256.v v28, (t5), x0",
+            "vsetvli t1, t2, e256, m2",
             // Load operands
             "vle256.v v0, (t3)",
-            "vlse256.v v4, (t4), x0",
+            "vlse256.v v2, (t4), x0",
             // T = mul(a, b) => v8
-            "vwmulu.vv v8, v0, v4",
+            "vwmulu.vv v4, v0, v2",
             // Extract T[0..4] => v0
-            "vnsrl.wx v0, v8, x0",
+            "vnsrl.wx v0, v4, x0",
             // m = halfMul(T[0..4], np) => v4
-            "vmul.vv v4, v0, v24",
+            "vmul.vv v2, v0, v28",
             // t = mul(m, p2)=> v16
-            "vwmulu.vv v16, v4, v28",
+            "vwmulu.vv v8, v2, v30",
             // c = t + T = > v8, with carry in v0
             // Temporarily enlarging vlen to deal with bigger adds
-            "vsetvli t1, t1, e512, m4",
-            "vmadc.vv v0, v8, v16",
-            "vadd.vv v8, v8, v16",
-            "vsetvli t1, t1, e256, m4",
+            "vsetvli t1, t1, e512, m2",
+            "vmadc.vv v0, v4, v8",
+            "vadd.vv v4, v4, v8",
+            "vsetvli t1, t1, e256, m2",
             // Extract c[4..8] => v4
             "li t5, 256",
-            "vnsrl.wx v4, v8, t5",
+            "vnsrl.wx v2, v4, t5",
             // gfpCarry using v4 in c[4..8], with carry in v0
             // c[4..8] - p2 => v16, with carry in v8
-            "vmsbc.vv v8, v4, v28",
-            "vsub.vv v16, v4, v28",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v8, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v8, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v4, otherwise use value in v16
-            "vmerge.vvm v4, v16, v4, v0",
+            "vmerge.vvm v2, v8, v2, v0",
             // Store result
-            "vse256.v v4, (t6)",
+            "vse256.v v2, (t6)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -629,18 +596,15 @@ pub fn do_mul_scalar(a: *const Gfp, b: &Gfp, c: *mut Gfp, len: usize) {
             "add t6, t6, t1",
             "blt x0, t2, 1b",
             len = in (reg) len,
-            np = in (reg) NP.as_ptr(),
-            p2 = in (reg) P2.as_ptr(),
             a = in (reg) a,
             b = in (reg) b as *const Gfp,
             c = in (reg) c,
-            // debug_val = in (reg) debug_val.as_ptr(),
         );
     }
 }
 
 #[inline(never)]
-pub fn add_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u8], b_index: &[u8], c: &mut [Gfp]) {
+pub fn add_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u16], b_index: &[u16], c: &mut [Gfp]) {
     debug_assert_eq!(a_index.len(), b_index.len());
     debug_assert_eq!(b_index.len(), c.len());
 
@@ -659,33 +623,30 @@ pub fn add_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u8], b_index: &[u8], c
             "mv t4, {b_index}",
             "mv t6, {c}",
             "1:",
-            "vsetvli t1, t2, e256, m8",
+            "vsetvli t1, t2, e256, m2",
             // Load operand indices
-            "vle8.v v0, (t3)",
-            "vle8.v v24, (t4)",
+            "vle16.v v0, (t3)",
+            "vle16.v v6, (t4)",
             // Load actual operands
             "mv t5, {a}",
-            "vluxei8.v v8, (t5), v0",
+            "vluxei16.v v2, (t5), v0",
             "mv t5, {b}",
-            "vluxei8.v v16, (t5), v24",
+            "vluxei16.v v4, (t5), v6",
             // Add operands together
             // c = a + b => v8, with carry in v0
-            "vmadc.vv v0, v8, v16",
-            "vadd.vv v8, v8, v16",
+            "vmadc.vv v0, v2, v4",
+            "vadd.vv v2, v2, v4",
             // gfpCarry on c
-            // Load p2 into v24
-            "mv t5, {p2}",
-            "vlse256.v v24, (t5), x0",
             // c - p2 => v24, with carry in v16
-            "vmsbc.vv v16, v8, v24",
-            "vsub.vv v24, v8, v24",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v6, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v16, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v8 (c),
             // otherwise use value in v24 (c - p2)
-            "vmerge.vvm v8, v24, v8, v0",
+            "vmerge.vvm v2, v6, v2, v0",
             // Store result
-            "vse256.v v8, (t6)",
+            "vse256.v v2, (t6)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -698,7 +659,6 @@ pub fn add_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u8], b_index: &[u8], c
             "add t6, t6, t1",
             "blt x0, t2, 1b",
             len = in (reg) c.len(),
-            p2 = in (reg) P2.as_ptr(),
             a = in (reg) a.as_ptr(),
             b = in (reg) b.as_ptr(),
             c = in (reg) c.as_ptr(),
@@ -709,7 +669,7 @@ pub fn add_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u8], b_index: &[u8], c
 }
 
 #[inline(never)]
-pub fn mul_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u8], b_index: &[u8], c: &mut [Gfp]) {
+pub fn mul_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u16], b_index: &[u16], c: &mut [Gfp]) {
     debug_assert_eq!(a_index.len(), b_index.len());
     debug_assert_eq!(b_index.len(), c.len());
 
@@ -728,47 +688,42 @@ pub fn mul_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u8], b_index: &[u8], c
             "mv t4, {b_index}",
             "mv t6, {c}",
             "1:",
-            "vsetvli t1, t2, e256, m4",
+            "vsetvli t1, t2, e256, m2",
             // Load operand indices
-            "vle8.v v24, (t3)",
-            "vle8.v v28, (t4)",
+            "vle16.v v12, (t3)",
+            "vle16.v v14, (t4)",
             // Load actual operands
             "mv t5, {a}",
-            "vluxei8.v v0, (t5), v24",
+            "vluxei16.v v0, (t5), v12",
             "mv t5, {b}",
-            "vluxei8.v v4, (t5), v28",
-            // Load np => v24, p2 => v28
-            "mv t5, {np}",
-            "vlse256.v v24, (t5), x0",
-            "mv t5, {p2}",
-            "vlse256.v v28, (t5), x0",
+            "vluxei16.v v2, (t5), v14",
             // T = mul(a, b) => v8
-            "vwmulu.vv v8, v0, v4",
+            "vwmulu.vv v4, v0, v2",
             // Extract T[0..4] => v0
-            "vnsrl.wx v0, v8, x0",
+            "vnsrl.wx v0, v4, x0",
             // m = halfMul(T[0..4], np) => v4
-            "vmul.vv v4, v0, v24",
+            "vmul.vv v2, v0, v28",
             // t = mul(m, p2)=> v16
-            "vwmulu.vv v16, v4, v28",
+            "vwmulu.vv v8, v2, v30",
             // c = t + T = > v8, with carry in v0
             // Temporarily enlarging vlen to deal with bigger adds
-            "vsetvli t1, t1, e512, m4",
-            "vmadc.vv v0, v8, v16",
-            "vadd.vv v8, v8, v16",
-            "vsetvli t1, t1, e256, m4",
+            "vsetvli t1, t1, e512, m2",
+            "vmadc.vv v0, v4, v8",
+            "vadd.vv v4, v4, v8",
+            "vsetvli t1, t1, e256, m2",
             // Extract c[4..8] => v4
             "li t5, 256",
-            "vnsrl.wx v4, v8, t5",
+            "vnsrl.wx v2, v4, t5",
             // gfpCarry using v4 in c[4..8], with carry in v0
             // c[4..8] - p2 => v16, with carry in v8
-            "vmsbc.vv v8, v4, v28",
-            "vsub.vv v16, v4, v28",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v8, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v8, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v4, otherwise use value in v16
-            "vmerge.vvm v4, v16, v4, v0",
+            "vmerge.vvm v2, v8, v2, v0",
             // Store result
-            "vse256.v v4, (t6)",
+            "vse256.v v2, (t6)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             // t3 and t4 here stores byte-sized indices, which can be treated the same
@@ -783,8 +738,6 @@ pub fn mul_by_byte_index(a: &[Gfp], b: &[Gfp], a_index: &[u8], b_index: &[u8], c
             "add t6, t6, t1",
             "blt x0, t2, 1b",
             len = in (reg) c.len(),
-            np = in (reg) NP.as_ptr(),
-            p2 = in (reg) P2.as_ptr(),
             a = in (reg) a.as_ptr(),
             b = in (reg) b.as_ptr(),
             c = in (reg) c.as_ptr(),
@@ -811,28 +764,25 @@ pub fn do_add(a: *const Gfp, b: *const Gfp, c: *mut Gfp, len: usize) {
             "mv t4, {b}",
             "mv t6, {c}",
             "1:",
-            "vsetvli t1, t2, e256, m8",
+            "vsetvli t1, t2, e256, m2",
             // Load operands
-            "vle256.v v8, (t3)",
-            "vle256.v v16, (t4)",
+            "vle256.v v2, (t3)",
+            "vle256.v v4, (t4)",
             // Add operands together
             // c = a + b => v8, with carry in v0
-            "vmadc.vv v0, v8, v16",
-            "vadd.vv v8, v8, v16",
+            "vmadc.vv v0, v2, v4",
+            "vadd.vv v2, v2, v4",
             // gfpCarry on c
-            // Load p2 into v24
-            "mv t5, {p2}",
-            "vlse256.v v24, (t5), x0",
             // c - p2 => v24, with carry in v16
-            "vmsbc.vv v16, v8, v24",
-            "vsub.vv v24, v8, v24",
+            "vmsbc.vv v4, v2, v30",
+            "vsub.vv v6, v2, v30",
             // Combine carries
-            "vmandnot.mm v0, v16, v0",
+            "vmandnot.mm v0, v4, v0",
             // Select value, if carry is 1, use value in v8 (c),
             // otherwise use value in v24 (c - p2)
-            "vmerge.vvm v8, v24, v8, v0",
+            "vmerge.vvm v2, v6, v2, v0",
             // Store result
-            "vse256.v v8, (t6)",
+            "vse256.v v2, (t6)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -845,7 +795,6 @@ pub fn do_add(a: *const Gfp, b: *const Gfp, c: *mut Gfp, len: usize) {
             "add t6, t6, t1",
             "blt x0, t2, 1b",
             len = in (reg) len,
-            p2 = in (reg) P2.as_ptr(),
             a = in (reg) a,
             b = in (reg) b,
             c = in (reg) c,
@@ -870,24 +819,21 @@ pub fn do_sub(a: *const Gfp, b: *const Gfp, c: *mut Gfp, len: usize) {
             "mv t4, {b}",
             "mv t6, {c}",
             "1:",
-            "vsetvli t1, t2, e256, m8",
-            // Load p2 into v24
-            "mv t5, {p2}",
-            "vlse256.v v24, (t5), x0",
+            "vsetvli t1, t2, e256, m2",
             // Load a into v8, b into v16
-            "vle256.v v8, (t3)",
-            "vle256.v v16, (t4)",
+            "vle256.v v2, (t3)",
+            "vle256.v v4, (t4)",
             // c = a - b => v8, carry is put in v0
-            "vmsbc.vv v0, v8, v16",
-            "vsub.vv v8, v8, v16",
+            "vmsbc.vv v0, v2, v4",
+            "vsub.vv v2, v2, v4",
             // Clear v16 to all zeros
-            "vxor.vv v16, v16, v16",
+            "vxor.vv v4, v4, v4",
             // If carry is present, select p2 in v24, otherwise select 0 in v16
-            "vmerge.vvm v16, v16, v24, v0",
+            "vmerge.vvm v4, v4, v30, v0",
             // Possibly add p2 to final result(when carry is present)
-            "vadd.vv v8, v8, v16",
+            "vadd.vv v2, v2, v4",
             // Store result
-            "vse256.v v8, (t6)",
+            "vse256.v v2, (t6)",
             // Update t2/t3/t4, start the next loop if required, t2 contains the count
             // of elements, so we do substraction using value in t1 directly.
             "sub t2, t2, t1",
@@ -899,7 +845,6 @@ pub fn do_sub(a: *const Gfp, b: *const Gfp, c: *mut Gfp, len: usize) {
             "add t4, t4, t1",
             "blt x0, t2, 1b",
             len = in (reg) len,
-            p2 = in (reg) P2.as_ptr(),
             a = in (reg) a,
             b = in (reg) b,
             c = in (reg) c,
