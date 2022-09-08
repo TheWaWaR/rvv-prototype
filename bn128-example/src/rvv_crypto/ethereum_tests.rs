@@ -1,5 +1,6 @@
 extern crate alloc;
 use super::alt_bn128_pairing;
+use super::zz_rust;
 use alloc::format;
 use ckb_std::syscalls::debug;
 
@@ -40,6 +41,7 @@ const WARMUP_RUNS: usize = 5;
 const BENCH_RUNS: usize = 20;
 
 pub fn bench_entry() {
+    zz_rust::zz_preload();
     let mut runtimes = [0u64; 14];
     for (i, (name, inputs, expect)) in ALT_BN128_PAIRING_CASE.iter().enumerate() {
         debug(format!("Warming up test: {}", name));
@@ -69,6 +71,7 @@ pub fn bench_entry() {
 }
 
 pub fn test_entry() {
+    zz_rust::zz_preload();
     for (name, inputs, expect) in &ALT_BN128_PAIRING_CASE {
         debug(format!("Running test: {}", name));
         run(inputs, expect);

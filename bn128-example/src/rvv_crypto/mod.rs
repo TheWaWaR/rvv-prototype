@@ -10,6 +10,7 @@ pub mod gfp6;
 mod macros;
 pub mod miller;
 pub mod twist;
+pub mod zz_rust;
 
 use self::{curve::CurvePoint, gfp12::Gfp12, miller::miller, twist::TwistPoint};
 use core::convert::TryInto;

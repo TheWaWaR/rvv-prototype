@@ -75,3 +75,5 @@ path = "src/bin/alt-bn128-example-x86-raw.rs"
 name = "alt-bn128-example-x86-raw"
 required-features = []
 
+[build-dependencies]
+cc = "1"
